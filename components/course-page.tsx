@@ -1,11 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { CheckCircle, Circle, Download, FileText, Play, Video } from "lucide-react"
+import { CheckCircle, Circle, Download, FileText, BookOpen, ImageIcon, Code } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 
 const courseChapters = [
@@ -13,17 +12,17 @@ const courseChapters = [
     id: 1,
     title: "Introduction à VBA",
     lessons: [
-      { id: 1, title: "Qu'est-ce que VBA ?", duration: "10 min", completed: true, type: "video" },
-      { id: 2, title: "L'éditeur VBA", duration: "15 min", completed: true, type: "video" },
-      { id: 3, title: "Premier programme", duration: "20 min", completed: false, type: "video" },
+      { id: 1, title: "Qu'est-ce que VBA ?", duration: "10 min", completed: true, type: "lesson" },
+      { id: 2, title: "L'éditeur VBA", duration: "15 min", completed: true, type: "lesson" },
+      { id: 3, title: "Premier programme", duration: "20 min", completed: false, type: "lesson" },
     ],
   },
   {
     id: 2,
     title: "Variables et Types de données",
     lessons: [
-      { id: 4, title: "Déclaration de variables", duration: "12 min", completed: false, type: "video" },
-      { id: 5, title: "Types de données", duration: "18 min", completed: false, type: "video" },
+      { id: 4, title: "Déclaration de variables", duration: "12 min", completed: false, type: "lesson" },
+      { id: 5, title: "Types de données", duration: "18 min", completed: false, type: "lesson" },
       { id: 6, title: "Exercice pratique", duration: "30 min", completed: false, type: "exercise" },
     ],
   },
@@ -31,9 +30,9 @@ const courseChapters = [
     id: 3,
     title: "Structures de contrôle",
     lessons: [
-      { id: 7, title: "Conditions If-Then-Else", duration: "15 min", completed: false, type: "video" },
-      { id: 8, title: "Boucles For", duration: "20 min", completed: false, type: "video" },
-      { id: 9, title: "Boucles While", duration: "18 min", completed: false, type: "video" },
+      { id: 7, title: "Conditions If-Then-Else", duration: "15 min", completed: false, type: "lesson" },
+      { id: 8, title: "Boucles For", duration: "20 min", completed: false, type: "lesson" },
+      { id: 9, title: "Boucles While", duration: "18 min", completed: false, type: "lesson" },
     ],
   },
 ]
@@ -46,7 +45,7 @@ const resources = [
 
 export function CoursePage() {
   const [selectedLesson, setSelectedLesson] = useState(courseChapters[0].lessons[0])
-  const [notes, setNotes] = useState("")
+  const [/*notes*/ /*setNotes*/ ,] = useState("")
 
   const totalLessons = courseChapters.reduce((acc, chapter) => acc + chapter.lessons.length, 0)
   const completedLessons = courseChapters.reduce(
@@ -76,65 +75,89 @@ export function CoursePage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Course Content */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Video/Content Area */}
+          {/* Content Area */}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="flex items-center gap-2">
-                    {selectedLesson.type === "video" ? <Video className="h-5 w-5" /> : <FileText className="h-5 w-5" />}
+                    {selectedLesson.type === "lesson" ? (
+                      <BookOpen className="h-5 w-5" />
+                    ) : (
+                      <FileText className="h-5 w-5" />
+                    )}
                     {selectedLesson.title}
                   </CardTitle>
-                  <CardDescription>Durée: {selectedLesson.duration}</CardDescription>
+                  <CardDescription>Durée de lecture: {selectedLesson.duration}</CardDescription>
                 </div>
-                <Button size="sm">
-                  <Play className="h-4 w-4 mr-2" />
-                  Lire
-                </Button>
+                <Badge variant="outline">{selectedLesson.type === "lesson" ? "Cours" : "Exercice"}</Badge>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="aspect-video bg-muted rounded-lg flex items-center justify-center mb-4">
+            <CardContent className="space-y-6">
+              {/* Image d'illustration */}
+              <div className="w-full h-48 bg-gradient-to-r from-blue-100 to-green-100 rounded-lg flex items-center justify-center border">
                 <div className="text-center">
-                  <Video className="h-12 w-12 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-muted-foreground">Contenu vidéo - {selectedLesson.title}</p>
+                  <ImageIcon className="h-12 w-12 mx-auto mb-2 text-blue-500" />
+                  <p className="text-sm text-muted-foreground">Illustration - {selectedLesson.title}</p>
                 </div>
               </div>
 
-              {selectedLesson.type === "video" && (
-                <div className="space-y-4">
-                  <h3 className="font-semibold">Description de la leçon</h3>
-                  <p className="text-muted-foreground">
-                    Dans cette leçon, nous allons explorer les concepts fondamentaux de VBA. Vous apprendrez les bases
-                    nécessaires pour commencer à programmer efficacement.
-                  </p>
+              {/* Contenu textuel */}
+              <div className="prose prose-sm max-w-none">
+                <h3 className="text-lg font-semibold mb-3">Introduction</h3>
+                <p className="text-muted-foreground mb-4">
+                  Visual Basic for Applications (VBA) est un langage de programmation développé par Microsoft. Il est
+                  intégré dans la plupart des applications Microsoft Office, permettant d'automatiser des tâches
+                  répétitives et de créer des solutions personnalisées.
+                </p>
 
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm">
-                      Leçon précédente
-                    </Button>
-                    <Button size="sm">Leçon suivante</Button>
+                <h4 className="text-md font-semibold mb-2">Concepts clés</h4>
+                <ul className="list-disc list-inside space-y-1 text-muted-foreground mb-4">
+                  <li>VBA est un langage orienté objet</li>
+                  <li>Il permet d'interagir avec les applications Office</li>
+                  <li>Les macros sont écrites en VBA</li>
+                  <li>L'éditeur VBA est accessible via Alt + F11</li>
+                </ul>
+
+                {/* Exemple de code */}
+                <h4 className="text-md font-semibold mb-2 flex items-center gap-2">
+                  <Code className="h-4 w-4" />
+                  Exemple pratique
+                </h4>
+                <div className="bg-muted p-4 rounded-lg font-mono text-sm mb-4">
+                  <div className="text-green-600 mb-1">{"// Premier programme VBA"}</div>
+                  <div className="text-blue-600">Sub</div> <span className="text-purple-600">MonPremierProgramme</span>
+                  ()
+                  <br />
+                  <span className="ml-4">MsgBox </span>
+                  <span className="text-orange-600">"Bonjour le monde !"</span>
+                  <br />
+                  <div className="text-blue-600">End Sub</div>
+                </div>
+
+                <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
+                  <div className="flex items-start">
+                    <div className="text-blue-400 mr-2">💡</div>
+                    <div>
+                      <p className="text-sm font-medium text-blue-800">Conseil pratique</p>
+                      <p className="text-sm text-blue-700">
+                        Utilisez toujours des noms explicites pour vos procédures et variables. Cela rendra votre code
+                        plus lisible et maintenable.
+                      </p>
+                    </div>
                   </div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </div>
 
-          {/* Notes Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Mes notes</CardTitle>
-              <CardDescription>Prenez des notes pendant votre apprentissage</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                placeholder="Écrivez vos notes ici..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="min-h-32"
-              />
-              <div className="flex justify-end mt-4">
-                <Button size="sm">Sauvegarder</Button>
+              <div className="flex gap-2 pt-4 border-t">
+                <Button variant="outline" size="sm">
+                  Leçon précédente
+                </Button>
+                <Button size="sm">Leçon suivante</Button>
+                <Button variant="outline" size="sm" className="ml-auto bg-transparent">
+                  <Download className="h-4 w-4 mr-2" />
+                  Télécharger PDF
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -169,8 +192,8 @@ export function CoursePage() {
                           <p className="text-sm font-medium truncate">{lesson.title}</p>
                           <p className="text-xs text-muted-foreground">{lesson.duration}</p>
                         </div>
-                        {lesson.type === "video" ? (
-                          <Video className="h-3 w-3 text-muted-foreground" />
+                        {lesson.type === "lesson" ? (
+                          <BookOpen className="h-3 w-3 text-muted-foreground" />
                         ) : (
                           <FileText className="h-3 w-3 text-muted-foreground" />
                         )}
