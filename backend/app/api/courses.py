@@ -19,12 +19,13 @@ def get_current_teacher(request: Request):
 @router.get("/courses", tags=["Courses"])
 def list_courses(limit: int = 20, offset: int = 0):
     supabase = get_supabase()
-    # On filtre pour ne pas retourner les cours masqués
+    # On filtre pour ne pas retourner les cours masqués et on trie par order_index
     response = (
         supabase
         .table("courses")
         .select("*")
         .eq("is_hidden", False)
+        .order("order_index", asc=True)
         .range(offset, offset + limit - 1)
         .execute()
     )

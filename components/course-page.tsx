@@ -24,8 +24,9 @@ type Course = {
   id: number
   title: string
   description: string
-  level: string
-  duration?: string
+  difficulty: string
+  estimated_hours?: number // Ajouté pour la durée
+  order_index?: number // Added for sorting
   lessons?: number
   exercises?: number
   students?: number
@@ -43,12 +44,22 @@ const resources = [
   { id: 3, title: "Exercices supplémentaires", type: "PDF", size: "1.2 MB" },
 ]
 
+// Mapping pour afficher la difficulté en français
+const difficultyLabels: Record<string, string> = {
+  beginner: "Débutant",
+  intermediate: "Intermédiaire",
+  advanced: "Avancé",
+};
+
 export function CoursePage() {
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
   const [selectedLesson, setSelectedLesson] = useState<any>(null)
+  // Ajout : états pour stocker le nombre de leçons et d'exercices par cours
+  const [lessonsCount, setLessonsCount] = useState<Record<number, number | undefined>>({})
+  const [exercisesCount, setExercisesCount] = useState<Record<number, number | undefined>>({})
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -67,6 +78,52 @@ export function CoursePage() {
     }
     fetchCourses()
   }, [])
+
+  // Fetch du nombre de leçons pour chaque cours
+  useEffect(() => {
+    const fetchLessonsCounts = async () => {
+      const counts: Record<number, number> = {}
+      await Promise.all(
+        courses.map(async (course) => {
+          try {
+            const res = await fetch(`https://vba-v2.onrender.com/courses/${course.id}/lessons`)
+            if (!res.ok) throw new Error()
+            const data = await res.json()
+            counts[course.id] = Array.isArray(data) ? data.length : 0
+          } catch {
+            counts[course.id] = 0
+          }
+        })
+      )
+      setLessonsCount(counts)
+    }
+    if (courses.length > 0) {
+      fetchLessonsCounts()
+    }
+  }, [courses])
+
+  // Fetch du nombre d'exercices pour chaque cours
+  useEffect(() => {
+    const fetchExercisesCounts = async () => {
+      const counts: Record<number, number> = {}
+      await Promise.all(
+        courses.map(async (course) => {
+          try {
+            const res = await fetch(`https://vba-v2.onrender.com/courses/${course.id}/exercises`)
+            if (!res.ok) throw new Error()
+            const data = await res.json()
+            counts[course.id] = Array.isArray(data) ? data.length : 0
+          } catch {
+            counts[course.id] = 0
+          }
+        })
+      )
+      setExercisesCount(counts)
+    }
+    if (courses.length > 0) {
+      fetchExercisesCounts()
+    }
+  }, [courses])
 
   const handleCourseSelect = (course: Course) => {
     setSelectedCourse(course)
@@ -97,7 +154,7 @@ export function CoursePage() {
   }
 
   if (!selectedCourse) {
-    return <CoursesList courses={courses} onCourseSelect={handleCourseSelect} />
+    return <CoursesList courses={courses} lessonsCount={lessonsCount} exercisesCount={exercisesCount} onCourseSelect={handleCourseSelect} />
   }
 
   return (
@@ -111,7 +168,9 @@ export function CoursePage() {
   )
 }
 
-function CoursesList({ courses, onCourseSelect }: { courses: Course[]; onCourseSelect: (course: Course) => void }) {
+function CoursesList({ courses, lessonsCount, exercisesCount, onCourseSelect }: { courses: Course[]; lessonsCount: Record<number, number | undefined>; exercisesCount: Record<number, number | undefined>; onCourseSelect: (course: Course) => void }) {
+  // Tri côté frontend par order_index croissant
+  const sortedCourses = [...courses].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -122,7 +181,7 @@ function CoursesList({ courses, onCourseSelect }: { courses: Course[]; onCourseS
 
       {/* Courses Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {courses.map((course) => (
+        {sortedCourses.map((course) => (
           <Card
             key={course.id}
             className="hover:shadow-lg transition-shadow cursor-pointer"
@@ -151,14 +210,14 @@ function CoursesList({ courses, onCourseSelect }: { courses: Course[]; onCourseS
                 </div>
                 <Badge
                   variant={
-                    course.level === "Débutant"
+                    course.difficulty === "beginner"
                       ? "default"
-                      : course.level === "Intermédiaire"
+                      : course.difficulty === "intermediate"
                         ? "secondary"
                         : "destructive"
                   }
                 >
-                  {course.level}
+                  {difficultyLabels[course.difficulty] || course.difficulty}
                 </Badge>
               </div>
             </CardHeader>
@@ -167,19 +226,23 @@ function CoursesList({ courses, onCourseSelect }: { courses: Course[]; onCourseS
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="flex items-center gap-1">
                   <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span>{course.duration || '-'}</span>
+                  <span>{course.estimated_hours ? `${course.estimated_hours} heures` : '-'}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <BookOpen className="h-4 w-4 text-muted-foreground" />
-                  <span>{course.lessons ?? '-'} leçons</span>
+                  <span>{
+                    lessonsCount[course.id] === undefined
+                      ? '-' // ou loader
+                      : `${lessonsCount[course.id]} leçon${lessonsCount[course.id] && lessonsCount[course.id]! > 1 ? 's' : ''}`
+                  }</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <FileText className="h-4 w-4 text-muted-foreground" />
-                  <span>{course.exercises ?? '-'} exercices</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <span>{course.students ?? '-'}</span>
+                  <span>{
+                    exercisesCount[course.id] === undefined
+                      ? '-' // ou loader
+                      : `${exercisesCount[course.id]} exercice${exercisesCount[course.id] && exercisesCount[course.id]! > 1 ? 's' : ''}`
+                  }</span>
                 </div>
               </div>
 
@@ -269,7 +332,7 @@ function CourseDetail({
             {completedLessons}/{totalLessons} leçons
           </Badge>
           <Badge variant="outline" className="border-white text-white">
-            {course.level}
+            {difficultyLabels[course.difficulty] || course.difficulty}
           </Badge>
         </div>
       </div>

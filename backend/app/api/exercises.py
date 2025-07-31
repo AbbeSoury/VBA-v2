@@ -90,4 +90,17 @@ def restore_exercise(exercise_id: str, teacher=Depends(get_current_teacher)):
         raise HTTPException(status_code=500, detail=str(response.error))
     if not response.data:
         raise HTTPException(status_code=404, detail="Exercise not found or not restored")
-    return {"success": True, "exercise": response.data[0]} 
+    return {"success": True, "exercise": response.data[0]}
+
+@router.get("/exercises/{course_id}", tags=["Exercises"])
+def get_exercises_by_course(course_id: str):
+    """
+    Récupère tous les exercices d'un cours donné (non masqués).
+    - **course_id**: identifiant du cours
+    - **Retour**: liste des exercices (array d'objets)
+    """
+    supabase = get_supabase()
+    response = supabase.table("exercises").select("*").eq("course_id", course_id).eq("is_hidden", False).execute()
+    if getattr(response, "error", None):
+        raise HTTPException(status_code=500, detail=str(response.error))
+    return response.data 
