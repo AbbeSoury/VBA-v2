@@ -17,13 +17,15 @@ tags_metadata = [
 
 app = FastAPI(openapi_tags=tags_metadata)
 
-# Ajout du middleware CORS
+# Ajout du middleware CORS avec wildcard pour tous les sous-domaines Vercel
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://vba-v2-3i2dmh95x-abbesourys-projects.vercel.app",
-        "http://localhost:3000"
+        "http://localhost:3000",
+        # Autorise tous les sous-domaines vba-v2-*.abbesourys-projects.vercel.app
+        "https://vba-v2-abbesourys-projects.vercel.app",
     ],
+    allow_origin_regex=r"https://vba-v2-.*\.abbesourys-projects\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
