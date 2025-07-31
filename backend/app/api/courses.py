@@ -25,7 +25,7 @@ def list_courses(limit: int = 20, offset: int = 0):
         .table("courses")
         .select("*")
         .eq("is_hidden", False)
-        .order("order_index", asc=True)
+        .order("order_index", desc=False)
         .range(offset, offset + limit - 1)
         .execute()
     )
