@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 tags_metadata = [
     {"name": "Courses", "description": "Gestion des cours"},
@@ -15,6 +16,18 @@ tags_metadata = [
 ]
 
 app = FastAPI(openapi_tags=tags_metadata)
+
+# Ajout du middleware CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://vba-v2-3i2dmh95x-abbesourys-projects.vercel.app",
+        "http://localhost:3000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 from app.api import (
     courses, test_supabase, exercises, lessons,
