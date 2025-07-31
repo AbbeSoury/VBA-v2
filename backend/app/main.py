@@ -21,7 +21,7 @@ app = FastAPI(openapi_tags=tags_metadata)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
-    allow_origin_regex=r"^https://vba-v2-[a-zA-Z0-9\\-]+\.abbesourys-projects\.vercel\.app$",
+    allow_origin_regex=r"^https://vba-v2-[a-zA-Z0-9-]+\.abbesourys-projects\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
