@@ -1,14 +1,3 @@
-# Ignorer les fichiers Python compilés
-*.pyc
-__pycache__/
-
-# Ignorer les fichiers de log éventuels
-*.log
-
-# Ignorer les fichiers d'environnement ou de configuration sensibles
-.env
-*.env
-
-# (Optionnel) Ignorer les fichiers de sortie temporaires
-*.tmp
-*.bak
+backend/scripts/update_course_stats.py
+update_course_stats.py
+scripts/update_course_stats.py
