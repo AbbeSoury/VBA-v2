@@ -36,6 +36,8 @@ type Course = {
   chapters?: any[]
   thumbnail_url?: string
   professor?: string
+  nblessons?: number // Added for lessons count
+  nbexercices?: number // Added for exercises count
 }
 
 const resources = [
@@ -58,8 +60,8 @@ export function CoursePage() {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
   const [selectedLesson, setSelectedLesson] = useState<any>(null)
   // Ajout : états pour stocker le nombre de leçons et d'exercices par cours
-  const [lessonsCount, setLessonsCount] = useState<Record<number, number | undefined>>({})
-  const [exercisesCount, setExercisesCount] = useState<Record<number, number | undefined>>({})
+  // const [lessonsCount, setLessonsCount] = useState<Record<number, number | undefined>>({})
+  // const [exercisesCount, setExercisesCount] = useState<Record<number, number | undefined>>({})
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -80,50 +82,50 @@ export function CoursePage() {
   }, [])
 
   // Fetch du nombre de leçons pour chaque cours
-  useEffect(() => {
-    const fetchLessonsCounts = async () => {
-      const counts: Record<number, number> = {}
-      await Promise.all(
-        courses.map(async (course) => {
-          try {
-            const res = await fetch(`https://vba-v2.onrender.com/courses/${course.id}/lessons`)
-            if (!res.ok) throw new Error()
-            const data = await res.json()
-            counts[course.id] = Array.isArray(data) ? data.length : 0
-          } catch {
-            counts[course.id] = 0
-          }
-        })
-      )
-      setLessonsCount(counts)
-    }
-    if (courses.length > 0) {
-      fetchLessonsCounts()
-    }
-  }, [courses])
+  // useEffect(() => {
+  //   const fetchLessonsCounts = async () => {
+  //     const counts: Record<number, number> = {}
+  //     await Promise.all(
+  //       courses.map(async (course) => {
+  //         try {
+  //           const res = await fetch(`https://vba-v2.onrender.com/courses/${course.id}/lessons`)
+  //           if (!res.ok) throw new Error()
+  //           const data = await res.json()
+  //           counts[course.id] = Array.isArray(data) ? data.length : 0
+  //         } catch {
+  //           counts[course.id] = 0
+  //         }
+  //       })
+  //     )
+  //     setLessonsCount(counts)
+  //   }
+  //   if (courses.length > 0) {
+  //     fetchLessonsCounts()
+  //   }
+  // }, [courses])
 
   // Fetch du nombre d'exercices pour chaque cours
-  useEffect(() => {
-    const fetchExercisesCounts = async () => {
-      const counts: Record<number, number> = {}
-      await Promise.all(
-        courses.map(async (course) => {
-          try {
-            const res = await fetch(`https://vba-v2.onrender.com/courses/${course.id}/exercises`)
-            if (!res.ok) throw new Error()
-            const data = await res.json()
-            counts[course.id] = Array.isArray(data) ? data.length : 0
-          } catch {
-            counts[course.id] = 0
-          }
-        })
-      )
-      setExercisesCount(counts)
-    }
-    if (courses.length > 0) {
-      fetchExercisesCounts()
-    }
-  }, [courses])
+  // useEffect(() => {
+  //   const fetchExercisesCounts = async () => {
+  //     const counts: Record<number, number> = {}
+  //     await Promise.all(
+  //       courses.map(async (course) => {
+  //         try {
+  //           const res = await fetch(`https://vba-v2.onrender.com/courses/${course.id}/exercises`)
+  //           if (!res.ok) throw new Error()
+  //           const data = await res.json()
+  //           counts[course.id] = Array.isArray(data) ? data.length : 0
+  //         } catch {
+  //           counts[course.id] = 0
+  //         }
+  //       })
+  //     )
+  //     setExercisesCount(counts)
+  //   }
+  //   if (courses.length > 0) {
+  //     fetchExercisesCounts()
+  //   }
+  // }, [courses])
 
   const handleCourseSelect = (course: Course) => {
     setSelectedCourse(course)
@@ -154,7 +156,7 @@ export function CoursePage() {
   }
 
   if (!selectedCourse) {
-    return <CoursesList courses={courses} lessonsCount={lessonsCount} exercisesCount={exercisesCount} onCourseSelect={handleCourseSelect} />
+    return <CoursesList courses={courses} onCourseSelect={handleCourseSelect} />
   }
 
   return (
@@ -168,7 +170,7 @@ export function CoursePage() {
   )
 }
 
-function CoursesList({ courses, lessonsCount, exercisesCount, onCourseSelect }: { courses: Course[]; lessonsCount: Record<number, number | undefined>; exercisesCount: Record<number, number | undefined>; onCourseSelect: (course: Course) => void }) {
+function CoursesList({ courses, onCourseSelect }: { courses: Course[]; onCourseSelect: (course: Course) => void }) {
   // Tri côté frontend par order_index croissant
   const sortedCourses = [...courses].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
   return (
@@ -230,19 +232,19 @@ function CoursesList({ courses, lessonsCount, exercisesCount, onCourseSelect }: 
                 </div>
                 <div className="flex items-center gap-1">
                   <BookOpen className="h-4 w-4 text-muted-foreground" />
-                  <span>{
-                    lessonsCount[course.id] === undefined
-                      ? '-' // ou loader
-                      : `${lessonsCount[course.id]} leçon${lessonsCount[course.id] && lessonsCount[course.id]! > 1 ? 's' : ''}`
-                  }</span>
+                  <span>
+                    {typeof course.nblessons === "number"
+                      ? `${course.nblessons} leçon${course.nblessons > 1 ? 's' : ''}`
+                      : '-'}
+                  </span>
                 </div>
                 <div className="flex items-center gap-1">
                   <FileText className="h-4 w-4 text-muted-foreground" />
-                  <span>{
-                    exercisesCount[course.id] === undefined
-                      ? '-' // ou loader
-                      : `${exercisesCount[course.id]} exercice${exercisesCount[course.id] && exercisesCount[course.id]! > 1 ? 's' : ''}`
-                  }</span>
+                  <span>
+                    {typeof course.nbexercices === "number"
+                      ? `${course.nbexercices} exercice${course.nbexercices > 1 ? 's' : ''}`
+                      : '-'}
+                  </span>
                 </div>
               </div>
 
