@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import {
   CheckCircle,
   Circle,
@@ -18,187 +18,333 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
+import { MultipleChoiceQuestion } from "@/components/tests/questions/multiple-choice-question"
+import { CodeCompletionQuestion } from "@/components/tests/questions/code-completion-question"
+import { OpenEndedQuestion } from "@/components/tests/questions/open-ended-question"
 
-const coursesData = {
-  1: {
-    id: 1,
-    title: "VBA pour Excel - Débutant",
-    description: "Apprenez les bases de VBA pour automatiser vos tâches Excel",
-    level: "Débutant",
-    duration: "8 heures",
-    lessons: 12,
-    exercises: 8,
-    students: 1250,
-    rating: 4.8,
-    progress: 22,
-    image: "excel-vba",
-    chapters: [
-      {
-        id: 1,
-        title: "Introduction à VBA",
-        lessons: [
-          { id: 1, title: "Qu'est-ce que VBA ?", duration: "10 min", completed: true, type: "lesson" },
-          { id: 2, title: "L'éditeur VBA", duration: "15 min", completed: true, type: "lesson" },
-          { id: 3, title: "Premier programme", duration: "20 min", completed: false, type: "lesson" },
-          { id: 4, title: "Exercice : Hello World", duration: "15 min", completed: false, type: "exercise" },
-        ],
-      },
-      {
-        id: 2,
-        title: "Variables et Types de données",
-        lessons: [
-          { id: 5, title: "Déclaration de variables", duration: "12 min", completed: false, type: "lesson" },
-          { id: 6, title: "Types de données", duration: "18 min", completed: false, type: "lesson" },
-          { id: 7, title: "Exercice : Calculatrice simple", duration: "30 min", completed: false, type: "exercise" },
-        ],
-      },
-      {
-        id: 3,
-        title: "Structures de contrôle",
-        lessons: [
-          { id: 8, title: "Conditions If-Then-Else", duration: "15 min", completed: false, type: "lesson" },
-          { id: 9, title: "Boucles For", duration: "20 min", completed: false, type: "lesson" },
-          { id: 10, title: "Boucles While", duration: "18 min", completed: false, type: "lesson" },
-          { id: 11, title: "Exercice : Traitement de données", duration: "25 min", completed: false, type: "exercise" },
-        ],
-      },
-    ],
-  },
-  2: {
-    id: 2,
-    title: "VBA pour Word - Intermédiaire",
-    description: "Automatisez vos documents Word avec VBA",
-    level: "Intermédiaire",
-    duration: "6 heures",
-    lessons: 10,
-    exercises: 6,
-    students: 890,
-    rating: 4.6,
-    progress: 0,
-    image: "word-vba",
-    chapters: [
-      {
-        id: 1,
-        title: "Manipulation de documents",
-        lessons: [
-          { id: 1, title: "Ouvrir et fermer des documents", duration: "12 min", completed: false, type: "lesson" },
-          { id: 2, title: "Formatage automatique", duration: "18 min", completed: false, type: "lesson" },
-          { id: 3, title: "Exercice : Mise en forme", duration: "20 min", completed: false, type: "exercise" },
-        ],
-      },
-      {
-        id: 2,
-        title: "Gestion du contenu",
-        lessons: [
-          { id: 4, title: "Recherche et remplacement", duration: "15 min", completed: false, type: "lesson" },
-          { id: 5, title: "Insertion d'éléments", duration: "20 min", completed: false, type: "lesson" },
-          { id: 6, title: "Exercice : Génération de rapport", duration: "35 min", completed: false, type: "exercise" },
-        ],
-      },
-    ],
-  },
-  3: {
-    id: 3,
-    title: "VBA Avancé - PowerPoint",
-    description: "Créez des présentations dynamiques avec VBA",
-    level: "Avancé",
-    duration: "10 heures",
-    lessons: 15,
-    exercises: 12,
-    students: 456,
-    rating: 4.9,
-    progress: 0,
-    image: "powerpoint-vba",
-    chapters: [
-      {
-        id: 1,
-        title: "Automatisation des présentations",
-        lessons: [
-          { id: 1, title: "Création de slides dynamiques", duration: "25 min", completed: false, type: "lesson" },
-          { id: 2, title: "Animation programmée", duration: "30 min", completed: false, type: "lesson" },
-          {
-            id: 3,
-            title: "Exercice : Présentation interactive",
-            duration: "45 min",
-            completed: false,
-            type: "exercise",
-          },
-        ],
-      },
-    ],
-  },
-}
+// SUPPRIMER toutes les données mockées (coursesData, etc)
+// On suppose que ce composant reçoit bien les props : course, lessons, selectedLesson, etc.
 
-const resources = [
-  { id: 1, title: "Guide de référence VBA", type: "PDF", size: "2.3 MB" },
-  { id: 2, title: "Exemples de code", type: "ZIP", size: "1.8 MB" },
-  { id: 3, title: "Exercices supplémentaires", type: "PDF", size: "1.2 MB" },
-  { id: 4, title: "Templates Excel", type: "XLSX", size: "1.5 MB" },
-]
+const difficultyLabels: Record<string, string> = {
+  beginner: "Débutant",
+  intermediate: "Intermédiaire",
+  advanced: "Avancé",
+};
 
-interface CourseDetailPageProps {
-  courseId: string
-}
+export function CourseDetailPage({ course, lessons, exercises = [], selectedLesson, onLessonSelect, onBack, resources }: {
+  course: any;
+  lessons: any[];
+  exercises?: any[];
+  selectedLesson: any;
+  onLessonSelect: (lesson: any) => void;
+  onBack: () => void;
+  resources: { id: number; title: string; type: string; size: string }[];
+}) {
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [isAnswered, setIsAnswered] = useState(false);
+  const [isCorrect, setIsCorrect] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [completedItems, setCompletedItems] = useState<Set<string>>(new Set());
+  const completedItemsRef = useRef<Set<string>>(new Set());
 
-export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
-  const course = coursesData[Number.parseInt(courseId)]
-  const [selectedLesson, setSelectedLesson] = useState(course?.chapters[0]?.lessons[0] || null)
+  // Synchroniser le ref avec le state
+  useEffect(() => {
+    completedItemsRef.current = completedItems;
+  }, [completedItems]);
 
-  if (!course) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-2">Cours non trouvé</h2>
-          <p className="text-muted-foreground mb-4">Le cours demandé n'existe pas.</p>
-          <Link href="/courses">
-            <Button>Retour aux cours</Button>
-          </Link>
-        </div>
-      </div>
-    )
+  // Fonction pour définir un cookie
+  const setCookie = (name: string, value: string, days: number = 365) => {
+    const expires = new Date();
+    expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+    document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/`;
+  };
+
+  // Fonction pour récupérer un cookie
+  const getCookie = (name: string): string | null => {
+    const nameEQ = name + "=";
+    const ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+      let c = ca[i];
+      while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+      if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+    }
+    return null;
+  };
+
+  // Charger la progression depuis les cookies au montage
+  useEffect(() => {
+    const savedProgress = getCookie(`course-progress-${course?.id}`);
+    if (savedProgress) {
+      try {
+        const progress = JSON.parse(savedProgress);
+        setCompletedItems(new Set(progress));
+      } catch (error) {
+        console.error('Erreur lors du chargement de la progression:', error);
+      }
+    }
+  }, [course?.id]);
+
+  // Sauvegarder la progression dans les cookies
+  const saveProgress = (newProgress: Set<string>) => {
+    try {
+      setCookie(`course-progress-${course?.id}`, JSON.stringify([...newProgress]), 365);
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde de la progression:', error);
+    }
+  };
+
+  // Marquer un élément comme terminé
+  const markAsCompleted = (itemId: string) => {
+    const newProgress = new Set(completedItems);
+    newProgress.add(itemId);
+    setCompletedItems(newProgress);
+    saveProgress(newProgress);
+  };
+
+  // Fonction personnalisée pour sélectionner une leçon et la marquer comme terminée
+  const handleLessonSelect = (lesson: any) => {
+    // Appeler la fonction originale
+    onLessonSelect(lesson);
+    
+    // Marquer instantanément comme terminé si c'est une leçon
+    if (lesson.displayType === 'lesson' && lesson.id && !completedItems.has(lesson.id)) {
+      markAsCompleted(lesson.id);
+    }
+  };
+
+  // Création de la liste combinée leçons + exercices (ordre : lessons puis exercises, à trier si besoin)
+  const combinedContent = [
+    ...(lessons?.map((l) => ({ ...l, displayType: 'lesson' })) || []),
+    ...(exercises?.map((e) => ({ ...e, displayType: 'exercise' })) || [])
+  ].sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
+  const nbLessons = combinedContent.filter(item => item.displayType === 'lesson').length
+  const nbExercises = combinedContent.filter(item => item.displayType === 'exercise').length
+
+  // Tri possible ici si tu veux un ordre précis (par order_index, etc.)
+  const currentIndex = combinedContent.findIndex((l) => l.id === selectedLesson?.id && l.displayType === selectedLesson?.displayType)
+
+  // Fonction pour obtenir le texte dynamique du bouton
+  const getNavLabel = (item: any, prev = false) => {
+    if (!item) return ''
+    if (item.displayType === 'lesson') return prev ? 'Leçon précédente' : 'Leçon suivante'
+    if (item.displayType === 'exercise') return prev ? 'Exercice précédent' : 'Exercice suivant'
+    return prev ? 'Précédent' : 'Suivant'
   }
 
-  const totalLessons = course.chapters.reduce((acc, chapter) => acc + chapter.lessons.length, 0)
-  const completedLessons = course.chapters.reduce(
-    (acc, chapter) => acc + chapter.lessons.filter((lesson) => lesson.completed).length,
-    0,
-  )
-  const progressPercentage = Math.round((completedLessons / totalLessons) * 100)
+  // Fonction pour valider la réponse
+  const handleValidateAnswer = () => {
+    if (selectedAnswer === null) {
+      alert("Veuillez sélectionner une réponse avant de valider.");
+      return;
+    }
+
+    if (selectedLesson?.displayType === 'exercise' && selectedLesson?.test_cases?.[0]) {
+      const testCase = selectedLesson.test_cases[0];
+      const correct = selectedAnswer === testCase.correct_option_index;
+      
+      setIsCorrect(correct);
+      setIsAnswered(true);
+      setShowFeedback(true);
+      
+      // Marquer automatiquement l'exercice comme terminé si la réponse est correcte
+      if (correct && selectedLesson?.id) {
+        markAsCompleted(selectedLesson.id);
+      }
+    }
+  };
+
+  // Fonction pour réinitialiser l'exercice
+  const handleResetExercise = () => {
+    setSelectedAnswer(null);
+    setIsAnswered(false);
+    setIsCorrect(false);
+    setShowFeedback(false);
+  };
+
+  // Fonction pour afficher le contenu interactif selon le type
+  const renderInteractiveContent = (lesson: any) => {
+    if (!lesson) return null
+    if (lesson.displayType === 'exercise') {
+      // QCM - gérer le type 'qcm' de l'API
+      if ((lesson.exerciseType === 'multiple-choice' || lesson.type === 'qcm') && lesson.test_cases && lesson.test_cases.length > 0) {
+        const testCase = lesson.test_cases[0]; // Prendre le premier test case
+        return (
+          <div className="space-y-6">
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <h3 className="text-lg font-medium mb-4">{testCase.question}</h3>
+              <div className="space-y-3">
+                {testCase.options.map((option: string, index: number) => (
+                  <div key={index} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-accent/50">
+                    <input
+                      type="radio"
+                      name={`exercise-${lesson.id}`}
+                      id={`option-${index}`}
+                      className="h-4 w-4 text-blue-600"
+                      checked={selectedAnswer === index}
+                      onChange={() => setSelectedAnswer(index)}
+                      disabled={isAnswered}
+                    />
+                    <label htmlFor={`option-${index}`} className="flex-1 cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <span className="font-medium text-sm bg-muted px-2 py-1 rounded">
+                          {String.fromCharCode(65 + index)}
+                        </span>
+                        <span>{option}</span>
+                      </div>
+                    </label>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Feedback de validation */}
+              {showFeedback && (
+                <div className={`mt-4 p-4 rounded-lg ${
+                  isCorrect ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+                }`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    {isCorrect ? (
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                    ) : (
+                      <Circle className="h-5 w-5 text-red-600" />
+                    )}
+                    <span className={`font-medium ${
+                      isCorrect ? 'text-green-800' : 'text-red-800'
+                    }`}>
+                      {isCorrect ? 'Correct !' : 'Incorrect'}
+                    </span>
+                  </div>
+                  <p className={`text-sm ${
+                    isCorrect ? 'text-green-700' : 'text-red-700'
+                  }`}>
+                    {isCorrect 
+                      ? 'Félicitations ! Votre réponse est correcte.' 
+                      : `La bonne réponse était : ${String.fromCharCode(65 + testCase.correct_option_index)}. ${testCase.options[testCase.correct_option_index]}`
+                    }
+                  </p>
+                </div>
+              )}
+              
+              <div className="mt-4 flex gap-2">
+                {!isAnswered ? (
+                  <Button 
+                    className="flex-1" 
+                    onClick={handleValidateAnswer}
+                    disabled={selectedAnswer === null}
+                  >
+                    Valider ma réponse
+                  </Button>
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    className="flex-1" 
+                    onClick={handleResetExercise}
+                  >
+                    Recommencer
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      }
+      // Code
+      if (lesson.exerciseType === 'code-completion' && lesson.vba_template) {
+        return (
+          <div className="space-y-4">
+            <div className="p-4 bg-green-50 rounded-lg">
+              <h3 className="font-medium mb-2">Template de code :</h3>
+              <div className="bg-muted p-4 rounded-lg font-mono text-sm">
+                <pre className="whitespace-pre-wrap">{lesson.vba_template}</pre>
+              </div>
+            </div>
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <h3 className="font-medium mb-2">Votre code :</h3>
+              <textarea
+                className="w-full min-h-32 p-3 border rounded-lg font-mono text-sm"
+                placeholder="Écrivez votre code ici..."
+              />
+              <div className="mt-3 flex gap-2">
+                <Button variant="outline">Exécuter</Button>
+                <Button>Vérifier</Button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+      // Question ouverte
+      if (lesson.exerciseType === 'open-ended' && lesson.description) {
+        return (
+          <div className="space-y-4">
+            <div className="p-4 bg-purple-50 rounded-lg">
+              <h3 className="font-medium mb-2">{lesson.description}</h3>
+              <textarea
+                className="w-full min-h-40 p-3 border rounded-lg"
+                placeholder="Rédigez votre réponse ici..."
+              />
+              <div className="mt-3">
+                <Button>Valider ma réponse</Button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+      // Autres types - afficher les informations disponibles
+      return (
+        <div className="space-y-4">
+          <div className="p-4 bg-yellow-50 rounded-lg">
+            <h3 className="font-medium mb-2">Exercice : {lesson.title}</h3>
+            <p className="text-sm text-gray-700 mb-3">{lesson.description}</p>
+            <div className="text-xs text-gray-600">
+              <p>Type: {lesson.type}</p>
+              <p>Difficulté: {lesson.difficulty}</p>
+              <p>Score max: {lesson.max_score} points</p>
+            </div>
+          </div>
+          {lesson.hints && lesson.hints.length > 0 && (
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <h4 className="font-medium mb-2">💡 Conseils :</h4>
+              <ul className="text-sm space-y-1">
+                {lesson.hints.map((hint: string, index: number) => (
+                  <li key={index}>• {hint}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )
+    }
+    return null
+  }
 
   return (
     <div className="space-y-6">
       {/* Course Header */}
       <div className="bg-gradient-to-r from-blue-500 to-green-500 rounded-lg p-6 text-white">
         <div className="flex items-center gap-4 mb-4">
-          <Link href="/courses">
-            <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Retour aux cours
-            </Button>
-          </Link>
+          <Button variant="ghost" size="sm" onClick={onBack} className="text-white hover:bg-white/20">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Retour aux cours
+          </Button>
         </div>
         <h1 className="text-3xl font-bold mb-2">{course.title}</h1>
         <p className="text-blue-100 mb-4">{course.description}</p>
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <span className="text-sm">Progression:</span>
-            <Progress value={progressPercentage} className="w-32 bg-blue-400" />
-            <span className="text-sm font-medium">{progressPercentage}%</span>
+            <Progress value={combinedContent.length > 0 ? Math.round(((currentIndex + 1) / combinedContent.length) * 100) : 0} className="w-32 bg-blue-400" />
+            <span className="text-sm font-medium">{combinedContent.length > 0 ? Math.round(((currentIndex + 1) / combinedContent.length) * 100) : 0}%</span>
           </div>
           <Badge variant="secondary" className="bg-blue-400 text-blue-900">
-            {completedLessons}/{totalLessons} leçons
+            {currentIndex + 1}/{combinedContent.length} éléments
           </Badge>
           <Badge variant="outline" className="border-white text-white">
-            {course.level}
+            {difficultyLabels[course.difficulty] || course.difficulty}
           </Badge>
-          <div className="flex items-center gap-1 text-sm">
-            <Clock className="h-4 w-4" />
-            <span>{course.duration}</span>
-          </div>
-          <div className="flex items-center gap-1 text-sm">
-            <Star className="h-4 w-4 fill-yellow-300 text-yellow-300" />
-            <span>{course.rating}</span>
-          </div>
+          {course.estimated_hours && (
+            <Badge variant="outline" className="border-white text-white">
+              {course.estimated_hours} heures
+            </Badge>
+          )}
         </div>
       </div>
 
@@ -211,146 +357,55 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="flex items-center gap-2">
-                      {selectedLesson.type === "lesson" ? (
-                        <BookOpen className="h-5 w-5" />
-                      ) : (
-                        <FileText className="h-5 w-5" />
-                      )}
+                      <BookOpen className="h-5 w-5" />
                       {selectedLesson.title}
                     </CardTitle>
-                    <CardDescription>Durée: {selectedLesson.duration}</CardDescription>
                   </div>
-                  <Badge
-                    variant="outline"
-                    className={
-                      selectedLesson.type === "exercise"
-                        ? "bg-orange-50 text-orange-700 border-orange-200"
-                        : "bg-blue-50 text-blue-700 border-blue-200"
-                    }
-                  >
-                    {selectedLesson.type === "lesson" ? "Cours" : "Exercice"}
-                  </Badge>
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Image d'illustration */}
-                <div className="w-full h-48 bg-gradient-to-r from-blue-100 to-green-100 rounded-lg flex items-center justify-center border">
-                  <div className="text-center">
-                    <ImageIcon className="h-12 w-12 mx-auto mb-2 text-blue-500" />
-                    <p className="text-sm text-muted-foreground">Illustration - {selectedLesson.title}</p>
-                  </div>
-                </div>
-
-                {/* Contenu selon le type */}
-                {selectedLesson.type === "lesson" ? (
-                  <div className="prose prose-sm max-w-none">
-                    <h3 className="text-lg font-semibold mb-3">Introduction</h3>
-                    <p className="text-muted-foreground mb-4">
-                      Visual Basic for Applications (VBA) est un langage de programmation développé par Microsoft. Il
-                      est intégré dans la plupart des applications Microsoft Office, permettant d'automatiser des tâches
-                      répétitives et de créer des solutions personnalisées.
-                    </p>
-
-                    <h4 className="text-md font-semibold mb-2">Concepts clés</h4>
-                    <ul className="list-disc list-inside space-y-1 text-muted-foreground mb-4">
-                      <li>VBA est un langage orienté objet</li>
-                      <li>Il permet d'interagir avec les applications Office</li>
-                      <li>Les macros sont écrites en VBA</li>
-                      <li>L'éditeur VBA est accessible via Alt + F11</li>
-                    </ul>
-
-                    <h4 className="text-md font-semibold mb-2 flex items-center gap-2">
-                      <Code className="h-4 w-4" />
-                      Exemple pratique
-                    </h4>
-                    <div className="bg-muted p-4 rounded-lg font-mono text-sm mb-4">
-                      <div className="text-green-600 mb-1">{"' Premier programme VBA"}</div>
-                      <div className="text-blue-600">Sub</div>{" "}
-                      <span className="text-purple-600">MonPremierProgramme</span>
-                      ()
-                      <br />
-                      <span className="ml-4">MsgBox </span>
-                      <span className="text-orange-600">"Bonjour le monde !"</span>
-                      <br />
-                      <div className="text-blue-600">End Sub</div>
-                    </div>
-
-                    <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
-                      <div className="flex items-start">
-                        <div className="text-blue-400 mr-2">💡</div>
-                        <div>
-                          <p className="text-sm font-medium text-blue-800">Conseil pratique</p>
-                          <p className="text-sm text-blue-700">
-                            Utilisez toujours des noms explicites pour vos procédures et variables. Cela rendra votre
-                            code plus lisible et maintenable.
-                          </p>
-                        </div>
+                {/* Contenu HTML direct depuis la base - SEULEMENT pour les leçons */}
+                {selectedLesson.displayType === 'lesson' && (
+                  <div className="prose prose-lg max-w-none">
+                    {selectedLesson.content ? (
+                      <div 
+                        className="lesson-content"
+                        dangerouslySetInnerHTML={{ 
+                          __html: selectedLesson.content 
+                        }}
+                      />
+                    ) : (
+                      <div className="bg-gray-50 rounded-lg p-6 text-center">
+                        <p className="text-gray-500 italic">Contenu en cours de préparation...</p>
                       </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="bg-orange-50 border-l-4 border-orange-400 p-4 rounded">
-                      <div className="flex items-start">
-                        <div className="text-orange-400 mr-2">🎯</div>
-                        <div>
-                          <p className="text-sm font-medium text-orange-800">Objectif de l'exercice</p>
-                          <p className="text-sm text-orange-700">
-                            Créez votre premier programme VBA qui affiche un message de bienvenue personnalisé.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <h4 className="font-semibold">Instructions :</h4>
-                      <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
-                        <li>Ouvrez l'éditeur VBA (Alt + F11)</li>
-                        <li>Insérez un nouveau module</li>
-                        <li>Créez une procédure Sub nommée "Bienvenue"</li>
-                        <li>Utilisez MsgBox pour afficher un message personnalisé</li>
-                        <li>Testez votre code</li>
-                      </ol>
-                    </div>
-
-                    <div className="bg-muted p-4 rounded-lg">
-                      <h5 className="font-medium mb-2">Code de départ :</h5>
-                      <div className="font-mono text-sm">
-                        <div className="text-blue-600">Sub</div> <span className="text-purple-600">Bienvenue</span>()
-                        <br />
-                        <span className="ml-4 text-muted-foreground">{"' Votre code ici"}</span>
-                        <br />
-                        <div className="text-blue-600">End Sub</div>
-                      </div>
-                    </div>
-
-                    <div className="bg-green-50 border-l-4 border-green-400 p-4 rounded">
-                      <div className="flex items-start">
-                        <div className="text-green-400 mr-2">✅</div>
-                        <div>
-                          <p className="text-sm font-medium text-green-800">Critères de réussite</p>
-                          <ul className="text-sm text-green-700 mt-1 space-y-1">
-                            <li>• Le programme s'exécute sans erreur</li>
-                            <li>• Le message s'affiche correctement</li>
-                            <li>• Le code est bien structuré</li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 )}
 
-                <div className="flex gap-2 pt-4 border-t">
-                  <Button variant="outline" size="sm">
-                    Leçon précédente
-                  </Button>
-                  <Button size="sm">
-                    {selectedLesson.type === "exercise" ? "Faire l'exercice" : "Leçon suivante"}
-                  </Button>
-                  <Button variant="outline" size="sm" className="ml-auto bg-transparent">
-                    <Download className="h-4 w-4 mr-2" />
-                    Télécharger
-                  </Button>
+                {/* Affichage direct du contenu interactif pour les exercices */}
+                {selectedLesson.displayType === 'exercise' && (
+                  <div>{renderInteractiveContent(selectedLesson)}</div>
+                )}
+
+                {/* Navigation - combinée, style strictement conservé */}
+                <div className="flex gap-3 pt-6 border-t border-gray-200">
+                  {currentIndex > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onLessonSelect(combinedContent[currentIndex - 1])}
+                    >
+                      {getNavLabel(combinedContent[currentIndex - 1], true)}
+                    </Button>
+                  )}
+                  {currentIndex < combinedContent.length - 1 && (
+                    <Button
+                      size="sm"
+                      onClick={() => onLessonSelect(combinedContent[currentIndex + 1])}
+                    >
+                      {getNavLabel(combinedContent[currentIndex + 1], false)}
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -359,98 +414,74 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Chapter List */}
+          {/* Sidebar : afficher la liste combinée (leçons + exercices) */}
           <Card>
             <CardHeader>
               <CardTitle>Contenu du cours</CardTitle>
-              <CardDescription>
-                {course.chapters.length} chapitres • {totalLessons} leçons
-              </CardDescription>
+              <div className="text-sm text-muted-foreground">
+                {nbLessons} leçon{nbLessons > 1 ? 's' : ''} • {nbExercises} exercice{nbExercises > 1 ? 's' : ''}
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {course.chapters.map((chapter) => (
-                <div key={chapter.id} className="space-y-2">
-                  <h4 className="font-medium text-sm flex items-center justify-between">
-                    {chapter.title}
-                    <Badge variant="outline" className="text-xs">
-                      {chapter.lessons.length}
-                    </Badge>
-                  </h4>
-                  <div className="space-y-1">
-                    {chapter.lessons.map((lesson) => (
+              {combinedContent.length === 0 ? (
+                <div className="text-muted-foreground text-center">Aucun contenu pour ce cours.</div>
+              ) : (
+                <div className="space-y-1">
+                  {combinedContent.map((item, idx) => {
+                    const isCompleted = completedItems.has(item.id);
+                    const estimatedMinutes = item.estimated_minutes || 15;
+                    
+                    return (
                       <button
-                        key={lesson.id}
-                        onClick={() => setSelectedLesson(lesson)}
-                        className={`w-full flex items-center gap-2 p-2 rounded-lg text-left hover:bg-accent transition-colors ${
-                          selectedLesson?.id === lesson.id ? "bg-accent" : ""
+                        key={item.id + '-' + item.displayType}
+                        onClick={() => handleLessonSelect(item)}
+                        className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors ${
+                          selectedLesson?.id === item.id && selectedLesson?.displayType === item.displayType 
+                            ? "bg-gray-100" 
+                            : "hover:bg-gray-50"
                         }`}
                       >
-                        {lesson.completed ? (
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <Circle className="h-4 w-4 text-muted-foreground" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{lesson.title}</p>
-                          <p className="text-xs text-muted-foreground">{lesson.duration}</p>
+                        {/* Statut de complétion automatique */}
+                        <div className={`flex items-center justify-center w-6 h-6 rounded-full ${
+                          isCompleted ? 'bg-green-100' : 'bg-gray-200'
+                        }`}>
+                          {isCompleted ? (
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <Circle className="h-4 w-4 text-gray-400" />
+                          )}
                         </div>
-                        {lesson.type === "lesson" ? (
-                          <BookOpen className="h-3 w-3 text-blue-500" />
+                        
+                        {/* Contenu principal */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{item.title}</p>
+                          <p className="text-xs text-gray-500">{estimatedMinutes} min</p>
+                        </div>
+                        
+                        {/* Icône de type */}
+                        {item.displayType === 'lesson' ? (
+                          <BookOpen className="h-4 w-4 text-blue-500" />
                         ) : (
-                          <FileText className="h-3 w-3 text-orange-500" />
+                          <FileText className="h-4 w-4 text-orange-500" />
                         )}
                       </button>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
-              ))}
+              )}
             </CardContent>
           </Card>
-
-          {/* Course Stats */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Statistiques du cours</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Étudiants inscrits</span>
-                <span className="font-medium">{course.students}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Note moyenne</span>
-                <div className="flex items-center gap-1">
-                  <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                  <span className="font-medium">{course.rating}</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Durée totale</span>
-                <span className="font-medium">{course.duration}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Niveau</span>
-                <Badge variant="outline" className="text-xs">
-                  {course.level}
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Resources */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <Download className="h-4 w-4" />
+              <CardTitle className="flex items-center gap-2">
+                <Download className="h-5 w-5" />
                 Ressources
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {resources.map((resource) => (
-                <div
-                  key={resource.id}
-                  className="flex items-center justify-between p-2 border rounded-lg hover:bg-accent/50 transition-colors"
-                >
+              {resources.map((resource: { id: number; title: string; type: string; size: string }) => (
+                <div key={resource.id} className="flex items-center justify-between p-2 border rounded-lg">
                   <div>
                     <p className="font-medium text-sm">{resource.title}</p>
                     <p className="text-xs text-muted-foreground">

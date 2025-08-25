@@ -103,3 +103,97 @@
 .progress-animated {
   animation: progress-animation 1s ease-out;
 }
+
+/* Styles pour le contenu des leçons */
+.lesson-content {
+  @apply space-y-6;
+}
+
+.lesson-content h3 {
+  @apply text-xl font-bold text-gray-900 flex items-center gap-2 border-b border-gray-200 pb-2 mb-4;
+}
+
+.lesson-content h3::before {
+  content: '';
+  @apply w-1 h-6 bg-blue-500 rounded-full;
+}
+
+.lesson-content h4 {
+  @apply text-lg font-semibold text-gray-900 flex items-center gap-2 mb-3;
+}
+
+.lesson-content h4::before {
+  content: '';
+  @apply w-1 h-5 bg-green-500 rounded-full;
+}
+
+.lesson-content p {
+  @apply text-gray-700 leading-relaxed mb-4;
+}
+
+.lesson-content ul {
+  @apply space-y-3 ml-4 mb-6;
+}
+
+.lesson-content li {
+  @apply flex items-start gap-3;
+}
+
+.lesson-content li::before {
+  content: '';
+  @apply w-2 h-2 bg-blue-400 rounded-full mt-2 flex-shrink-0;
+}
+
+.lesson-content .intro-section {
+  @apply bg-gray-50 rounded-lg p-6 border-l-4 border-blue-400;
+}
+
+.lesson-content .code-block {
+  @apply bg-gray-900 rounded-lg p-6 font-mono text-sm overflow-x-auto shadow-lg;
+}
+
+.lesson-content .code-header {
+  @apply flex items-center gap-2 mb-3;
+}
+
+.lesson-content .code-header::before {
+  content: '';
+  @apply w-3 h-3 bg-red-400 rounded-full;
+}
+
+.lesson-content .code-header::after {
+  content: '';
+  @apply w-3 h-3 bg-yellow-400 rounded-full;
+}
+
+.lesson-content .code-comment {
+  @apply text-green-400;
+}
+
+.lesson-content .code-keyword {
+  @apply text-blue-400;
+}
+
+.lesson-content .code-function {
+  @apply text-purple-400;
+}
+
+.lesson-content .code-string {
+  @apply text-orange-400;
+}
+
+.lesson-content .tip-box {
+  @apply bg-blue-50 border border-blue-200 rounded-lg p-6;
+}
+
+.lesson-content .tip-icon {
+  @apply p-2 bg-blue-100 rounded-lg flex-shrink-0;
+}
+
+.lesson-content .tip-title {
+  @apply font-semibold text-blue-900 mb-2;
+}
+
+.lesson-content .tip-content {
+  @apply text-blue-800 leading-relaxed;
+}

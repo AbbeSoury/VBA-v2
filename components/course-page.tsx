@@ -18,6 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
+import Link from "next/link"
 
 // Typage du cours selon l'API (à ajuster si besoin)
 type Course = {
@@ -59,9 +60,10 @@ export function CoursePage() {
   const [error, setError] = useState<string | null>(null)
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
   const [selectedLesson, setSelectedLesson] = useState<any>(null)
-  // Ajout : états pour stocker le nombre de leçons et d'exercices par cours
-  // const [lessonsCount, setLessonsCount] = useState<Record<number, number | undefined>>({})
-  // const [exercisesCount, setExercisesCount] = useState<Record<number, number | undefined>>({})
+  const [lessons, setLessons] = useState<any[]>([])
+  const [loadingLessons, setLoadingLessons] = useState(false)
+  const [exercises, setExercises] = useState<any[]>([])
+  const [loadingExercises, setLoadingExercises] = useState(false)
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -81,60 +83,55 @@ export function CoursePage() {
     fetchCourses()
   }, [])
 
-  // Fetch du nombre de leçons pour chaque cours
-  // useEffect(() => {
-  //   const fetchLessonsCounts = async () => {
-  //     const counts: Record<number, number> = {}
-  //     await Promise.all(
-  //       courses.map(async (course) => {
-  //         try {
-  //           const res = await fetch(`https://vba-v2.onrender.com/courses/${course.id}/lessons`)
-  //           if (!res.ok) throw new Error()
-  //           const data = await res.json()
-  //           counts[course.id] = Array.isArray(data) ? data.length : 0
-  //         } catch {
-  //           counts[course.id] = 0
-  //         }
-  //       })
-  //     )
-  //     setLessonsCount(counts)
-  //   }
-  //   if (courses.length > 0) {
-  //     fetchLessonsCounts()
-  //   }
-  // }, [courses])
-
-  // Fetch du nombre d'exercices pour chaque cours
-  // useEffect(() => {
-  //   const fetchExercisesCounts = async () => {
-  //     const counts: Record<number, number> = {}
-  //     await Promise.all(
-  //       courses.map(async (course) => {
-  //         try {
-  //           const res = await fetch(`https://vba-v2.onrender.com/courses/${course.id}/exercises`)
-  //           if (!res.ok) throw new Error()
-  //           const data = await res.json()
-  //           counts[course.id] = Array.isArray(data) ? data.length : 0
-  //         } catch {
-  //           counts[course.id] = 0
-  //         }
-  //       })
-  //     )
-  //     setExercisesCount(counts)
-  //   }
-  //   if (courses.length > 0) {
-  //     fetchExercisesCounts()
-  //   }
-  // }, [courses])
-
-  const handleCourseSelect = (course: Course) => {
+  const handleCourseSelect = async (course: Course) => {
+    console.log("🚀 Sélection du cours:", course.id)
     setSelectedCourse(course)
-    setSelectedLesson(course.chapters?.[0]?.lessons?.[0] || null)
+    setLoadingLessons(true)
+    setLoadingExercises(true)
+    setLessons([])
+    setExercises([])
+    setSelectedLesson(null)
+    try {
+      // Utilisation de l'endpoint RESTful /exercises?course_id=xxx
+      const [lessonsResponse, exercisesResponse] = await Promise.all([
+        fetch(`https://vba-v2.onrender.com/courses/${course.id}/lessons`),
+        fetch(`https://vba-v2.onrender.com/exercises?course_id=${course.id}`)
+      ])
+      console.log("📥 Status:", lessonsResponse.status, exercisesResponse.status);
+      const lessonsData = lessonsResponse.ok ? await lessonsResponse.json() : [];
+      const exercisesData = exercisesResponse.ok ? await exercisesResponse.json() : [];
+      // Ajouter le type d'affichage sans écraser le type original
+      const exercisesWithDisplayType = exercisesData.map((ex: any) => ({
+        ...ex,
+        displayType: 'exercise', // Pour l'affichage dans la sidebar
+        exerciseType: ex.type    // Garder le type original (qcm, code, etc.)
+      }));
+      console.log("📚 Leçons API:", lessonsData);
+      console.log("💪 Exercices avec displayType:", exercisesWithDisplayType);
+      setLessons(lessonsData)
+      setExercises(exercisesWithDisplayType)
+      if (lessonsData.length > 0) {
+        setSelectedLesson({ ...lessonsData[0], type: 'lesson' })
+      } else if (exercisesWithDisplayType.length > 0) {
+        setSelectedLesson({ ...exercisesWithDisplayType[0], type: 'exercise' })
+      }
+    } catch (error) {
+      console.error("❌ Erreur:", error)
+      setLessons([])
+      setExercises([])
+    } finally {
+      setLoadingLessons(false)
+      setLoadingExercises(false)
+    }
   }
 
   const handleBackToCourses = () => {
     setSelectedCourse(null)
     setSelectedLesson(null)
+    setLessons([])
+    setExercises([])
+    setLoadingLessons(false)
+    setLoadingExercises(false)
   }
 
   if (loading) {
@@ -166,6 +163,10 @@ export function CoursePage() {
       onLessonSelect={setSelectedLesson}
       onBack={handleBackToCourses}
       resources={resources}
+      lessons={lessons}
+      exercises={exercises}
+      loadingLessons={loadingLessons}
+      loadingExercises={loadingExercises}
     />
   )
 }
@@ -279,9 +280,13 @@ function CoursesList({ courses, onCourseSelect }: { courses: Course[]; onCourseS
                 </div>
               )}
 
-              <Button className="w-full" variant={course.progress && course.progress > 0 ? "default" : "outline"}>
-                {course.progress && course.progress > 0 ? "Continuer" : "Commencer"}
-              </Button>
+              <Link href={`/courses/${course.id}`} className="w-full" passHref legacyBehavior>
+                <a style={{ width: "100%" }}>
+                  <Button className="w-full" variant={course.progress && course.progress > 0 ? "default" : "outline"}>
+                    {course.progress && course.progress > 0 ? "Continuer" : "Commencer"}
+                  </Button>
+                </a>
+              </Link>
             </CardContent>
           </Card>
         ))}
@@ -297,20 +302,40 @@ function CourseDetail({
   onLessonSelect,
   onBack,
   resources,
+  lessons,
+  exercises,
+  loadingLessons,
+  loadingExercises,
 }: {
   course: Course;
   selectedLesson: any;
   onLessonSelect: (lesson: any) => void;
   onBack: () => void;
   resources: { id: number; title: string; type: string; size: string }[];
+  lessons: any[];
+  exercises: any[];
+  loadingLessons: boolean;
+  loadingExercises: boolean;
 }) {
-  // Correction : gestion chapters potentiellement undefined
-  const totalLessons = course.chapters?.reduce((acc: number, chapter: any) => acc + chapter.lessons.length, 0) ?? 0
-  const completedLessons = course.chapters?.reduce(
-    (acc: number, chapter: any) => acc + chapter.lessons.filter((lesson: any) => lesson.completed).length,
-    0,
-  ) ?? 0
-  const progressPercentage = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0
+  // Liste combinée et triée
+  const combinedContent = [
+    ...lessons.map(lesson => ({ ...lesson, displayType: 'lesson' })),
+    ...exercises.map(exercise => ({ ...exercise, displayType: 'exercise' }))
+  ].sort((a, b) => {
+    // Trier par lesson_id d'abord (pour grouper par leçon), puis par order_index
+    if (a.lesson_id && b.lesson_id && a.lesson_id !== b.lesson_id) {
+      return a.lesson_id.localeCompare(b.lesson_id)
+    }
+    return (a.order_index || 0) - (b.order_index || 0)
+  })
+
+  // LOG DEBUG
+  console.log("💪 Exercises reçus:", exercises)
+  console.log("🧩 Combined content final:", combinedContent)
+
+  const totalItems = lessons.length + exercises.length
+  const completedItems = combinedContent.filter(item => item.completed).length
+  const progressPercentage = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0
 
   return (
     <div className="space-y-6">
@@ -331,11 +356,16 @@ function CourseDetail({
             <span className="text-sm font-medium">{progressPercentage}%</span>
           </div>
           <Badge variant="secondary" className="bg-blue-400 text-blue-900">
-            {completedLessons}/{totalLessons} leçons
+            {completedItems}/{totalItems} terminés
           </Badge>
           <Badge variant="outline" className="border-white text-white">
             {difficultyLabels[course.difficulty] || course.difficulty}
           </Badge>
+          {course.estimated_hours && (
+            <Badge variant="outline" className="border-white text-white">
+              {course.estimated_hours} heures
+            </Badge>
+          )}
         </div>
       </div>
 
@@ -346,132 +376,72 @@ function CourseDetail({
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      {selectedLesson.type === "lesson" ? (
-                        <BookOpen className="h-5 w-5" />
-                      ) : (
-                        <FileText className="h-5 w-5" />
-                      )}
+                  <div className="flex-1">
+                    <CardTitle className="flex items-center gap-3 text-2xl font-bold mb-2">
+                      <div className={`p-2 rounded-lg ${
+                        selectedLesson.type === 'lesson' 
+                          ? 'bg-blue-100' 
+                          : 'bg-orange-100'
+                      }`}>
+                        {selectedLesson.type === 'lesson' ? (
+                          <BookOpen className="h-6 w-6 text-blue-600" />
+                        ) : (
+                          <Code className="h-6 w-6 text-orange-600" />
+                        )}
+                      </div>
                       {selectedLesson.title}
                     </CardTitle>
-                    <CardDescription>Durée: {selectedLesson.duration}</CardDescription>
+                    <CardDescription className="text-base text-muted-foreground">
+                      {selectedLesson.type === 'lesson' 
+                        ? `Durée: ${selectedLesson.estimated_minutes || 30} min`
+                        : `Exercice • ${selectedLesson.max_score || 100} points • Difficulté: ${selectedLesson.difficulty || 'beginner'}`
+                      }
+                    </CardDescription>
                   </div>
-                  <Badge
-                    variant="outline"
-                    className={
-                      selectedLesson.type === "exercise" ? "bg-orange-50 text-orange-700 border-orange-200" : ""
-                    }
-                  >
-                    {selectedLesson.type === "lesson" ? "Cours" : "Exercice"}
+                  <Badge variant="outline" className={
+                    selectedLesson.type === 'lesson'
+                      ? "bg-blue-50 text-blue-700 border-blue-200 px-3 py-1"
+                      : "bg-orange-50 text-orange-700 border-orange-200 px-3 py-1"
+                  }>
+                    {selectedLesson.type === 'lesson' ? 'Leçon' : 'Exercice'}
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Image d'illustration */}
-                <div className="w-full h-48 bg-gradient-to-r from-blue-100 to-green-100 rounded-lg flex items-center justify-center border">
-                  <div className="text-center">
-                    <ImageIcon className="h-12 w-12 mx-auto mb-2 text-blue-500" />
-                    <p className="text-sm text-muted-foreground">Illustration - {selectedLesson.title}</p>
+                {/* Illustration */}
+                <div className={`w-full h-56 rounded-xl flex items-center justify-center border shadow-sm ${
+                  selectedLesson.type === 'lesson'
+                    ? 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-blue-100'
+                    : 'bg-gradient-to-br from-orange-50 via-yellow-50 to-red-50 border-orange-100'
+                }`}>
+                  <div className="text-center space-y-3">
+                    <div className="p-4 bg-white rounded-full shadow-md">
+                      {selectedLesson.type === 'lesson' ? (
+                        <BookOpen className="h-12 w-12 text-blue-500" />
+                      ) : (
+                        <Code className="h-12 w-12 text-orange-500" />
+                      )}
+                    </div>
+                    <p className="text-sm font-medium text-gray-600">
+                      {selectedLesson.type === 'lesson' ? 'Leçon' : 'Exercice'} - {selectedLesson.title}
+                    </p>
                   </div>
                 </div>
 
-                {/* Contenu selon le type */}
-                {selectedLesson.type === "lesson" ? (
-                  <div className="prose prose-sm max-w-none">
-                    <h3 className="text-lg font-semibold mb-3">Introduction</h3>
-                    <p className="text-muted-foreground mb-4">
-                      Visual Basic for Applications (VBA) est un langage de programmation développé par Microsoft. Il
-                      est intégré dans la plupart des applications Microsoft Office, permettant d'automatiser des tâches
-                      répétitives et de créer des solutions personnalisées.
-                    </p>
-
-                    <h4 className="text-md font-semibold mb-2">Concepts clés</h4>
-                    <ul className="list-disc list-inside space-y-1 text-muted-foreground mb-4">
-                      <li>VBA est un langage orienté objet</li>
-                      <li>Il permet d'interagir avec les applications Office</li>
-                      <li>Les macros sont écrites en VBA</li>
-                      <li>L'éditeur VBA est accessible via Alt + F11</li>
-                    </ul>
-
-                    <h4 className="text-md font-semibold mb-2 flex items-center gap-2">
-                      <Code className="h-4 w-4" />
-                      Exemple pratique
-                    </h4>
-                    <div className="bg-muted p-4 rounded-lg font-mono text-sm mb-4">
-                      <div className="text-green-600 mb-1">{"// Premier programme VBA"}</div>
-                      <div className="text-blue-600">Sub</div>{" "}
-                      <span className="text-purple-600">MonPremierProgramme</span>
-                      ()
-                      <br />
-                      <span className="ml-4">MsgBox </span>
-                      <span className="text-orange-600">"Bonjour le monde !"</span>
-                      <br />
-                      <div className="text-blue-600">End Sub</div>
+                {/* Contenu HTML riche pour leçon ET exercice */}
+                <div className="prose prose-lg max-w-none">
+                  {selectedLesson.content ? (
+                    <div 
+                      className="lesson-content"
+                      dangerouslySetInnerHTML={{ 
+                        __html: selectedLesson.content 
+                      }}
+                    />
+                  ) : (
+                    <div className="bg-gray-50 rounded-lg p-6 text-center">
+                      <p className="text-gray-500 italic">Contenu en cours de préparation...</p>
                     </div>
-
-                    <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
-                      <div className="flex items-start">
-                        <div className="text-blue-400 mr-2">💡</div>
-                        <div>
-                          <p className="text-sm font-medium text-blue-800">Conseil pratique</p>
-                          <p className="text-sm text-blue-700">
-                            Utilisez toujours des noms explicites pour vos procédures et variables. Cela rendra votre
-                            code plus lisible et maintenable.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="bg-orange-50 border-l-4 border-orange-400 p-4 rounded">
-                      <div className="flex items-start">
-                        <div className="text-orange-400 mr-2">🎯</div>
-                        <div>
-                          <p className="text-sm font-medium text-orange-800">Objectif de l'exercice</p>
-                          <p className="text-sm text-orange-700">
-                            Créez votre premier programme VBA qui affiche un message de bienvenue personnalisé.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <h4 className="font-semibold">Instructions :</h4>
-                      <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
-                        <li>Ouvrez l'éditeur VBA (Alt + F11)</li>
-                        <li>Insérez un nouveau module</li>
-                        <li>Créez une procédure Sub nommée "Bienvenue"</li>
-                        <li>Utilisez MsgBox pour afficher un message personnalisé</li>
-                        <li>Testez votre code</li>
-                      </ol>
-                    </div>
-
-                    <div className="bg-muted p-4 rounded-lg">
-                      <h5 className="font-medium mb-2">Code de départ :</h5>
-                      <div className="font-mono text-sm">
-                        <div className="text-blue-600">Sub</div> <span className="text-purple-600">Bienvenue</span>()
-                        <br />
-                        <span className="ml-4 text-muted-foreground">{"// Votre code ici"}</span>
-                        <br />
-                        <div className="text-blue-600">End Sub</div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex gap-2 pt-4 border-t">
-                  <Button variant="outline" size="sm">
-                    Leçon précédente
-                  </Button>
-                  <Button size="sm">
-                    {selectedLesson.type === "exercise" ? "Faire l'exercice" : "Leçon suivante"}
-                  </Button>
-                  <Button variant="outline" size="sm" className="ml-auto bg-transparent">
-                    <Download className="h-4 w-4 mr-2" />
-                    Télécharger
-                  </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -480,43 +450,72 @@ function CourseDetail({
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Chapter List */}
           <Card>
             <CardHeader>
-              <CardTitle>Contenu du cours</CardTitle>
+              <CardTitle>📚 Contenu du cours</CardTitle>
+              <div className="text-sm text-muted-foreground">
+                {lessons.length} leçons • {exercises.length} exercices
+              </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {course.chapters?.map((chapter: any) => (
-                <div key={chapter.id} className="space-y-2">
-                  <h4 className="font-medium text-sm">{chapter.title}</h4>
-                  <div className="space-y-1">
-                    {chapter.lessons.map((lesson: any) => (
-                      <button
-                        key={lesson.id}
-                        onClick={() => onLessonSelect(lesson)}
-                        className={`w-full flex items-center gap-2 p-2 rounded-lg text-left hover:bg-accent transition-colors ${
-                          selectedLesson?.id === lesson.id ? "bg-accent" : ""
-                        }`}
-                      >
-                        {lesson.completed ? (
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <Circle className="h-4 w-4 text-muted-foreground" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{lesson.title}</p>
-                          <p className="text-xs text-muted-foreground">{lesson.duration}</p>
-                        </div>
-                        {lesson.type === "lesson" ? (
-                          <BookOpen className="h-3 w-3 text-muted-foreground" />
-                        ) : (
-                          <FileText className="h-3 w-3 text-orange-500" />
-                        )}
-                      </button>
-                    ))}
-                  </div>
+            <CardContent>
+              <div className="text-xs mb-3 p-2 bg-gray-100 rounded">
+                Debug: Lessons={lessons.length}, Exercises={exercises.length}, Loading={loadingLessons || loadingExercises}
+              </div>
+              {(loadingLessons || loadingExercises) ? (
+                <div className="space-y-2">
+                  <div className="text-sm text-blue-600">⏳ Chargement du contenu...</div>
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="h-12 bg-gray-200 rounded animate-pulse" />
+                  ))}
                 </div>
-              ))}
+              ) : combinedContent.length > 0 ? (
+                <div className="space-y-2">
+                  <div className="text-xs text-green-600 mb-2">
+                    ✅ {lessons.length} leçons + {exercises.length} exercices chargés
+                  </div>
+                  {combinedContent.map((item, index) => (
+                    <button
+                      key={`${item.displayType}-${item.id}`}
+                      onClick={() => {
+                        console.log(`🎯 Clic sur ${item.displayType}:`, item.title)
+                        onLessonSelect(item)
+                      }}
+                      className={`w-full flex items-center gap-3 p-3 rounded-lg text-left hover:bg-accent transition-colors border ${
+                        selectedLesson?.id === item.id && selectedLesson?.displayType === item.displayType
+                          ? "bg-blue-50 border-blue-300 border-2" 
+                          : "hover:border-gray-300"
+                      }`}
+                    >
+                      <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${
+                        item.displayType === 'lesson' 
+                          ? 'bg-blue-100 text-blue-600' 
+                          : 'bg-orange-100 text-orange-600'
+                      }`}>
+                        {item.displayType === 'lesson' ? (item.order_index || 0) + 1 : 'E'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{item.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {item.displayType === 'lesson' 
+                            ? `${item.estimated_minutes || 30} min` 
+                            : `${item.max_score || 100} pts • ${item.difficulty || 'beginner'}`
+                          }
+                        </p>
+                      </div>
+                      {item.displayType === 'lesson' ? (
+                        <BookOpen className="h-4 w-4 text-blue-500" />
+                      ) : (
+                        <Code className="h-4 w-4 text-orange-500" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 space-y-2">
+                  <p className="text-sm font-medium text-red-600">❌ Aucun contenu trouvé</p>
+                  <p className="text-xs text-gray-500">Vérifiez la console F12</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 

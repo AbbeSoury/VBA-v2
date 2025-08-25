@@ -36,6 +36,16 @@ def list_exercises(
     course_id: Optional[str] = None,
     type: Optional[str] = None
 ):
+    """
+    Récupère la liste des exercices (non masqués).
+    - **limit**: nombre maximum d'exercices à retourner (défaut: 20)
+    - **offset**: décalage pour la pagination (défaut: 0)
+    - **course_id**: (optionnel) filtre pour retourner uniquement les exercices d'un cours donné (recommandé pour obtenir tous les exercices d'un cours)
+    - **type**: (optionnel) filtre par type d'exercice
+    
+    Exemple d'usage RESTful recommandé pour obtenir tous les exercices d'un cours :
+    GET /exercises?course_id=ID_DU_COURS
+    """
     supabase = get_supabase()
     query = supabase.table("exercises").select("*").eq("is_hidden", False)
     if course_id:
